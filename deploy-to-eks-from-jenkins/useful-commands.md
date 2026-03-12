@@ -14,6 +14,33 @@ curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s htt
  mv ./aws-iam-authenticator /usr/local/bin
 ```
 
+##### Go to server where is Jenkins 
+##### Create kubeconfig file for Jenkins
+    ```sh
+    vim config.yaml
+    
+    ```
+Values we need to updated:
+1. K8s cluster name 
+2. Server Endpoint 
+3. certificate-authority-data
+
+##### And we need to do this file available inside for Jenkins container at the default kubeconfig location inside the users home directory 
+##### Go to the Jenkins container 
+
+    docker exec -it 17a82852d1be bash
+    cd ~
+    pwd
+    mkdir .kube
+    exit
+    docker cp config 17a82852d1be:/var/jenkins_home/.kube
+    
+    
+
+
+
+
+
 ##### Copy config file to Jenkins server
 
  ```sh
