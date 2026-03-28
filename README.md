@@ -38,7 +38,7 @@ containers:
     kubectl apply -f cluster-autoscaler-autodiscaver.yaml 
 
 ## Fargate
-
+###### AWS Fargate = serverless compute for containers
 ### Create IAM Role for Fargate
 
 EC2 Role for Node Group (Worker Node)
