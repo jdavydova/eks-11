@@ -108,7 +108,8 @@ Configure AWS:
 	eksctl create cluster \
 	  --name demo-cluster \
 	  --region eu-north-1 \
-	  --nodes 3
+	  --nodes 3 \
+	  --kubeconfig=./kubeconfig.my-cluster.yaml
 
 🔹 Step 3 — Verify cluster
 
@@ -120,7 +121,7 @@ Configure AWS:
 	  --cluster demo-cluster \
 	  --region eu-north-1 \
 	  --name demo-fargate \
-	  --namespace default
+	  --namespace my-app
   
 🔹 Step 5 — Deploy application
 
@@ -135,53 +136,6 @@ Example (nginx):
 	kubectl get svc
 
 👉 Look for EXTERNAL-IP
-
-Using configuration file :
-
-	kubectl apply -f nginx-fargate.yaml
-
-Example of nginx-fargate.yaml:
-
-	apiVersion: apps/v1
-	kind: Deployment
-	metadata:
-	  name: nginx-test
-	  namespace: default
-	  labels:
-	    app: nginx
-	spec:
-	  replicas: 2
-	  selector: 
-	    matchLabels:
-	      app: nginx
-	      profile: fargate
-	  template:
-	    metadata:
-	      labels:
-	        app: nginx
-	        profile: fargate
-	    spec:
-	      containers:
-	      - name: nginx
-	        image: nginx
-	        ports:
-	        - containerPort: 80 
-	---
-	apiVersion: v1
-	kind: Service
-	metadata:
-	  name: nginx
-	  labels:
-	    app: nginx
-	spec:
-	  ports:
-	  - name: http
-	    port: 80
-	    protocol: TCP
-	    targetPort: 80
-	  selector:
-	    app: nginx
-	  type: LoadBalancer
 	  
 🔹 Step 7 — Access application
 
@@ -204,6 +158,29 @@ nodes (EC2)
 load balancers
 networking
 
+#### Solutions from techword:
+First you need to install eksctl command line tool locally. See the installation guide here: https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
+
+Steps
+🔹 create cluster with 3 EC2 instances and store access configuration to cluster in kubeconfig.my-cluster.yaml file 
+	
+	eksctl create cluster --name=my-cluster --nodes=3 --kubeconfig=./kubeconfig.my-cluster.yaml
+
+ 🔹 create fargate profile in the cluster. It will apply for all K8s components in my-app namespace
+
+	eksctl create fargateprofile \
+	    --cluster my-cluster \
+	    --name my-fargate-profile \
+	    --namespace my-app
+
+🔹 point kubectl to your cluster - use absolute path to kubeconfigfile
+
+	export KUBECONFIG={absolute-path}/kubeconfig.my-cluster.yaml
+
+🔹 validate cluster is accessible and nodes and fargate profile created
+
+	kubectl get node
+	eksctl get fargateprofile --cluster my-cluster
 
 🟢 EXERCISE 2: Deploy Mysql and phpmyadmin
 You deploy mysql and phpmyadmin on the EC2 nodes using the same setup as before.
@@ -217,26 +194,163 @@ image:
   registry: docker.io
   tag: latest
   repository: bitnamilegacy/mysql 
-EXERCISE 3: Deploy your Java application
+
+General notes
+
+All the k8s manifest files for the exercise are in "k8s-deployment" folder, so:
+
+🔹 clone this repository locally
+
+	git clone https://gitlab.com/twn-devops-bootcamp/latest/11-eks/eks-exercises.git
+
+🔹 check out the solutions branch
+
+	git checkout feature/solutions
+
+🔹 change to k8s-deployment folder
+
+	cd k8s-deployment
+
+🔹Mysql Chart link:
+	https://github.com/bitnami/charts/tree/master/bitnami/mysql
+
+🔹 install Mysql chart 
+
+	helm repo add bitnami https://charts.bitnami.com/bitnami
+	helm install my-release -f mysql-chart-values-eks.yaml
+
+🔹 deploy phpmyadmin with its configuration for Mysql DB access
+
+	kubectl apply -f db-config.yaml
+	kubectl apply -f db-secret.yaml
+	kubectl apply -f phpmyadmin.yaml
+
+🔹 access phpmyadmin and login to mysql db
+
+	kubectl port-forward svc/phpmyadmin-service 8081:8081
+
+🔹 access in browser on
+	
+	localhost:8081
+
+🔹 login with one of these 2 credentials
+	
+	"my-user" : "my-pass"
+	"root" : "secret-root-pass"
+
+
+### Installing phpMyAdmin Locally (Minikube + MySQL + Kubernetes)
+
+🔹 Step 1 — Start local Kubernetes cluster
+minikube start
+
+👉 This creates a local Kubernetes cluster on your machine.
+
+🔹 Step 2 — Install MySQL using Helm
+
+Add Helm repository:
+
+	helm repo add bitnami https://charts.bitnami.com/bitnami
+
+Install MySQL:
+
+	helm install my-release bitnami/mysql -f mysql-chart-values-eks.yaml
+
+👉 This creates:
+
+MySQL pods
+MySQL services
+Persistent storage
+
+🔹 Step 3 — Verify MySQL is running
+
+	kubectl get pods
+	kubectl get svc
+
+👉 You should see:
+
+	my-release-mysql-primary → Running
+	MySQL service → port 3306
+
+🔹 Step 4 — deploy phpmyadmin with its configuration for Mysql DB access
+
+	kubectl apply -f db-config.yaml
+	kubectl apply -f db-secret.yaml
+	kubectl apply -f phpmyadmin.yaml
+
+🔹 Step 5 — access phpmyadmin and login to mysql db
+
+	kubectl port-forward svc/phpmyadmin-service 8081:8081
+
+Open in browser:
+
+	http://localhost:8081
+	
+🔹 Step 9 — Login to MySQL
+
+Get root password:
+
+	MYSQL_ROOT_PASSWORD=$(kubectl get secret --namespace default my-release-mysql -o jsonpath="{.data.mysql-root-password}" | base64 -d)
+	echo $MYSQL_ROOT_PASSWORD
+
+Connect to Mysql:
+
+	kubectl run my-release-mysql-client --rm --tty -i --restart='Never' --image docker.io/bitnamilegacy/mysql:latest --namespace default --env MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD --command -- bash
+
+Inside:
+
+	mysql -h my-release-mysql-primary.default.svc.cluster.local -uroot -p"$MYSQL_ROOT_PASSWORD"
+
+<img width="1457" height="586" alt="Screenshot 2026-04-01 at 11 39 48 AM" src="https://github.com/user-attachments/assets/6da16555-4341-4f47-9df9-287b2ecd3d68" />
+
+  
+🟢 EXERCISE 3: Deploy your Java application
 You deploy your Java application using Fargate with 3 replicas using the same setup as before.
 
-
-
 Setup Continuous Deployment with Jenkins
-EXERCISE 4: Automate deployment
+
+🔹 Create namespace my-app to deploy our java application, because we are deploying java-app with fargate profile. And fargate profile we 
+
+	create applies for my-app namespace. 
+	kubectl create namespace my-app
+
+🔹 We now have to create all configuration and secrets for our java app in the my-app namespace
+
+🔹 Create my-registry-key secret to pull image 
+	
+	DOCKER_REGISTRY_SERVER=docker.io
+	DOCKER_USER=your dockerID, same as for `docker login`
+	DOCKER_EMAIL=your dockerhub email, same as for `docker login`
+	DOCKER_PASSWORD=your dockerhub pwd, same as for `docker login`
+
+	kubectl create secret -n my-app docker-registry my-registry-key \
+	--docker-server=$DOCKER_REGISTRY_SERVER \
+	--docker-username=$DOCKER_USER \
+	--docker-password=$DOCKER_PASSWORD \
+	--docker-email=$DOCKER_EMAIL
+
+
+🔹 Again from k8s-deployment folder, execute following commands. By adding the my-app namespace, these components will be created with Fargate profile
+
+	kubectl apply -f db-secret.yaml -n my-app
+	kubectl apply -f db-config.yaml -n my-app
+	kubectl apply -f java-app.yaml -n my-app
+
+
+🟢 EXERCISE 4: Automate deployment
 Now your application is running, and when you or others make changes to it, Jenkins pipeline builds the new image, but you have to manually deploy it into the cluster. From your experience you know how annoying that is for you and your team, so you want to automate deploying to the cluster as well.
 
 Setup automatic deployment to the cluster in the pipeline.
 
 
-EXERCISE 5: Use ECR as Docker repository
+🟢 EXERCISE 5: Use ECR as Docker repository
 Now your application is running, and when you or others make changes to it, Jenkins pipeline builds the new image, but you have to manually deploy it into the cluster. From your experience you know how annoying that is for you and your team, so you want to automate deploying to the cluster as well.
 
 So, the company wants to use ECR instead, again to have everything on 1 platform and also to let AWS manage the repository including storage, cleanups etc. Therefore you:
 
 Replace the docker repository in your pipeline with ECR
 
-EXERCISE 6: Configure Autoscaling
+🟢 EXERCISE 6: Configure Autoscaling
 Now your application is running, whenever a change is made, it gets automatically deployed in the cluster etc. This is great, but you notice that most of the time the 3 nodes you have are underutilized, especially at the weekends, because your containers aren't using that many resources. However, your company is still paying full price for all of the servers.
 
 You suggest to your manager that you will be able to save the company some infrastructure costs by configuring autoscaling. Your manager is happy with this suggestion and asks you to configure it. So you:
