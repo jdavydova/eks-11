@@ -395,9 +395,12 @@ Steps to automate deployment for existing setup
 
 	apt-get update
 	apt-get install -y apt-transport-https ca-certificates curl gnupg
+
 	curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
 	chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
 	echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+
 	chmod 644 /etc/apt/sources.list.d/kubernetes.list
 	apt-get update
 	apt-get install -y kubectl
@@ -426,6 +429,7 @@ Steps to automate deployment for existing setup
 	- CLUSTER_REGION
 
 🔹 Create Jenkins pipeline using the Jenkinsfile in this branch, in the root folder
+
 Make sure the paths to the k8s manifest files in the "deploy" stage of the Jenkinsfile are all correct!!
 
 🟢 EXERCISE 6: Configure Autoscaling
