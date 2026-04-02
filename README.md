@@ -1,40 +1,5 @@
 ### EKS AWS Kubernetes
 
-https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html
-
-Amazon S3 url bucket https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml 
-
-	aws configure list 
- 	aws eks update-kubeconfig --name eks-cluster-test 
-
-Cluster status is CREATING
-
-To find latest version for autoscaler
-
-https://github.com/kubernetes/autoscaler/tags
-
-Added to  cluster-autoscaler-autodiscaver.yaml
-
-	————————————
-	name: cluster-autoscaler
-	namespace: kube-system
-	annotations
-	eks.amazonaws.com/role-arn: arn:aws:iam::788577008603:role/EKSServiceAccountRole
-	————————————————
-	containers:
-	- image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
-	  name: cluster-autoscaler
-	  env:
-	    - name: AWS_REGION
-	      value: "eu-north-1"
-	—————————————————
-	--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/<EKS_CLUSTRER_NAME>
-	- --balance-similar-node-groups
-	- --skip-nodes-with-system-pods=false
-	————————————————
-
-
-    kubectl apply -f cluster-autoscaler-autodiscaver.yaml 
 
 ## Fargate
 ###### AWS Fargate = serverless compute for containers
@@ -439,5 +404,42 @@ You suggest to your manager that you will be able to save the company some infra
 
 Go ahead and configure autoscaling to scale down to a minimum of 1 node when servers are underutilized and maximum of 3 nodes when in full use.
 
+https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html
+
+Amazon S3 url bucket https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml 
+
+	aws configure list 
+ 	aws eks update-kubeconfig --name eks-cluster-test 
+
+Cluster status is CREATING
+
+To find latest version for autoscaler
+
+https://github.com/kubernetes/autoscaler/tags
+
+Added to  eks-cluster-with-autoscaling/cluster-autoscaler-autodiscaver.yaml:
+
+	
+	name: cluster-autoscaler
+	namespace: kube-system
+	annotations
+	eks.amazonaws.com/role-arn: arn:aws:iam::788577008603:role/EKSServiceAccountRole
+
+	
+	containers:
+	- image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
+	  name: cluster-autoscaler
+	  env:
+	    - name: AWS_REGION
+	      value: "eu-north-1"
+
+	
+	--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/<EKS_CLUSTRER_NAME>
+	- --balance-similar-node-groups
+	- --skip-nodes-with-system-pods=false
+	
+And aplly configuration
+
+    kubectl apply -f cluster-autoscaler-autodiscaver.yaml 
 
 
