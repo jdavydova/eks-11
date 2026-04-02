@@ -2,8 +2,7 @@
 
 https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html
 
-Amazon S3 url bucket https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml
-
+Amazon S3 url bucket https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml 
 
 	aws configure list 
  	aws eks update-kubeconfig --name eks-cluster-test 
@@ -16,23 +15,23 @@ https://github.com/kubernetes/autoscaler/tags
 
 Added to  cluster-autoscaler-autodiscaver.yaml
 
-————————————
-name: cluster-autoscaler
-namespace: kube-system
-annotations
-eks.amazonaws.com/role-arn: arn:aws:iam::788577008603:role/EKSServiceAccountRole
-————————————————
-containers:
-- image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
-  name: cluster-autoscaler
-  env:
-    - name: AWS_REGION
-      value: "eu-north-1"
-—————————————————
---node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/<EKS_CLUSTRER_NAME>
-- --balance-similar-node-groups
-- --skip-nodes-with-system-pods=false
-————————————————
+	————————————
+	name: cluster-autoscaler
+	namespace: kube-system
+	annotations
+	eks.amazonaws.com/role-arn: arn:aws:iam::788577008603:role/EKSServiceAccountRole
+	————————————————
+	containers:
+	- image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
+	  name: cluster-autoscaler
+	  env:
+	    - name: AWS_REGION
+	      value: "eu-north-1"
+	—————————————————
+	--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/<EKS_CLUSTRER_NAME>
+	- --balance-similar-node-groups
+	- --skip-nodes-with-system-pods=false
+	————————————————
 
 
     kubectl apply -f cluster-autoscaler-autodiscaver.yaml 
@@ -46,9 +45,10 @@ EC2 Role for Node Group (Worker Node)
 1. Pods/kebectl on server provisioned by Fargate need permissions
 2. Create Fargate Role 
 
-IAM -> Role -> AWS Service -> EKS Fargate Pod
+	IAM -> Role -> AWS Service -> EKS Fargate Pod
 
 Role Name :
+
     eks-fargate-role
 
 ### Create Fargate Profile 
@@ -85,7 +85,6 @@ EKS create cluster:
 ### 11 - Kubernetes on AWS - EKS
 
 Exercises for Module "Kubernetes on AWS"
-
 
 Right after you setup the cluster on LKE or Minikube and deployed your application inside, your manager comes to you to tell you that the company also wants to run Kubernetes on AWS. Again, with less overhead when managing just one platform. So they ask you to reconfigure your cluster on AWS and deploy your application there instead.
 
@@ -349,6 +348,84 @@ Now your application is running, and when you or others make changes to it, Jenk
 So, the company wants to use ECR instead, again to have everything on 1 platform and also to let AWS manage the repository including storage, cleanups etc. Therefore you:
 
 Replace the docker repository in your pipeline with ECR
+
+🟢 Exercise 4 & 5: Automate deployment & Use ECR as Docker repository 
+ 
+Current cluster setup
+At this point, you already have an EKS cluster, where:
+
+✅ Mysql chart is deployed and phpmyadmin is running too
+✅ my-app namespace was created
+✅ db-config and db-secret were created in the my-app namespace for the java-app
+✅ my-registry-key secret was created to fetch image from docker-hub
+✅ your java app is also running
+
+Steps to automate deployment for existing setup
+🔹 Create an ECR registry for your java-app image
+
+🔹 Locally, on your computer: Create a docker registry secret for ECR
+
+	DOCKER_REGISTRY_SERVER=your ECR registry server - "your-aws-id.dkr.ecr.your-ecr-region.amazonaws.com"
+	DOCKER_USER=your dockerID, same as for `docker login` - "AWS"
+	DOCKER_PASSWORD=your dockerhub pwd, same as for `docker login` - get using: "aws ecr get-login-password --region {ecr-region}"
+	
+	kubectl create secret -n my-app docker-registry my-ecr-registry-key \
+	--docker-server=$DOCKER_REGISTRY_SERVER \
+	--docker-username=$DOCKER_USER \
+	--docker-password=$DOCKER_PASSWORD
+
+🔹 SSH into server where Jenkins container is running
+
+	ssh -i {private-key-path} {user}@{public-ip}
+
+🔹 Enter Jenkins container
+
+	sudo docker exec -it {jenkins-container-id} -u 0 bash
+
+🔹 Install aws-cli inside Jenkins container
+- Link: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+
+	curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+	unzip awscliv2.zip
+	./aws/install
+
+🔹 Install kubectl inside Jenkins container
+- Link: https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
+
+	apt-get update
+	apt-get install -y apt-transport-https ca-certificates curl gnupg
+	curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+	chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+	echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+	chmod 644 /etc/apt/sources.list.d/kubernetes.list
+	apt-get update
+	apt-get install -y kubectl
+
+🔹 Install envsubst tool
+- Link: https://command-not-found.com/envsubst
+
+	apt-get update
+	apt-get install -y gettext-base
+
+🔹 create 2 "secret-text" credentials for AWS access in Jenkins: 
+
+	- "jenkins_aws_access_key_id" for AWS_ACCESS_KEY_ID 
+	- "jenkins_aws_secret_access_key" for AWS_SECRET_ACCESS_KEY    
+
+🔹 Create 4 "secret-text" credentials for db-secret.yaml:
+	
+	- id: "db_user", secret: "my-user"
+	- id: "db_pass", secret: "my-pass"
+	- id: "db_name", secret: "my-app-db"
+	- id: "db_root_pass", secret: "secret-root-pass"
+
+🔹 Set the correct values in Jenkins for following environment variables: 
+	
+	- ECR_REPO_URL
+	- CLUSTER_REGION
+
+🔹 Create Jenkins pipeline using the Jenkinsfile in this branch, in the root folder
+Make sure the paths to the k8s manifest files in the "deploy" stage of the Jenkinsfile are all correct!!
 
 🟢 EXERCISE 6: Configure Autoscaling
 Now your application is running, whenever a change is made, it gets automatically deployed in the cluster etc. This is great, but you notice that most of the time the 3 nodes you have are underutilized, especially at the weekends, because your containers aren't using that many resources. However, your company is still paying full price for all of the servers.
