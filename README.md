@@ -146,7 +146,8 @@ You should see nginx welcome page ✅
 
 ⚠️ VERY IMPORTANT (cost control)
 🔥 Step 8 — Cleanup (MUST DO)
-eksctl delete cluster \
+
+	eksctl delete cluster \
   --name demo-cluster \
   --region eu-north-1
 
