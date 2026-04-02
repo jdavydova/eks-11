@@ -408,6 +408,66 @@ https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html
 
 Amazon S3 url bucket https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml 
 
+# 📘 EKS Cluster Autoscaling Setup Guide
+
+## 1. Create VPC and Infrastructure (CloudFormation)
+
+Use the following Amazon S3 CloudFormation template to create a VPC with private subnets:
+
+https://s3.us-west-2.amazonaws.com/amazon-eks/cloudformation/2020-10-29/amazon-eks-vpc-private-subnets.yaml
+
+---
+
+## 2. Understand the Auto Scaling Group (ASG)
+
+When an Auto Scaling Group (ASG) is created in AWS:
+
+- It groups multiple EC2 instances logically
+- It defines:
+  - **Minimum capacity** (scale-down limit)
+  - **Maximum capacity** (scale-up limit)
+
+⚠️ Important:
+- The ASG **does NOT automatically scale based on Kubernetes workloads**
+- It only defines infrastructure boundaries
+
+---
+
+## 3. Why Additional Configuration Is Needed
+
+Amazon EKS does **not automatically scale EC2 instances**.
+
+To enable autoscaling:
+- Kubernetes must communicate with AWS
+- A Kubernetes component called the **Cluster Autoscaler** must be deployed
+
+### Cluster Autoscaler Responsibilities:
+- Monitors unscheduled pods
+- Adjusts ASG desired capacity
+- Scales EC2 instances up/down automatically
+
+---
+
+## 4. Establish Trust Using OIDC
+
+To allow Kubernetes to interact securely with AWS, configure **OIDC (OpenID Connect)**.
+
+### What is OIDC?
+- Identity layer on top of OAuth 2.0
+- Enables Kubernetes service accounts to assume IAM roles
+
+---
+
+### 4.1 Get OIDC Provider URL
+
+Run the following command:
+
+```bash
+aws eks describe-cluster \
+  --name <cluster-name> \
+  --query "cluster.identity.oidc.issuer" \
+  --output text
+
 	aws configure list 
  	aws eks update-kubeconfig --name eks-cluster-test 
 
