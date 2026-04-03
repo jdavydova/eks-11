@@ -1,52 +1,3 @@
-### EKS AWS Kubernetes
-
-
-## Fargate
-###### AWS Fargate = serverless compute for containers
-### Create IAM Role for Fargate
-
-EC2 Role for Node Group (Worker Node)
-
-1. Pods/kebectl on server provisioned by Fargate need permissions
-2. Create Fargate Role 
-
-	IAM -> Role -> AWS Service -> EKS Fargate Pod
-
-Role Name :
-
-    eks-fargate-role
-
-### Create Fargate Profile 
-
-1. Pod Selection Rule
-2. Specifies which Pods Should use Fargarte when they are lounched 
-
-eks-cluster-test -> Computer -> Add fargate profile
-
-    kubectl get pod 
-    kubectl get node -n kube-system
-    kubectl get ns
-    kubectl create ns dev
-    kubectl apply -f fargate-profile/nginx-config.yaml 
-    kubectl get pods -n dev
-
-To install eksctl
-
-    brew tap weaveworks/tap
-    brew install weaveworks/tap/eksct
-
-EKS create cluster:
-
-    eksctl create cluster \
-    --name demo-cluster \
-    --version 1.35 \
-    --region eu-north-1 \
-    --nodegroup-name demo-nodes \
-    --node-type t3.micro \
-    --nodes 2 \
-    --nodes-min 1 \
-    --nodes-max 3
-
 ### 11 - Kubernetes on AWS - EKS
 
 Exercises for Module "Kubernetes on AWS"
@@ -575,5 +526,55 @@ https://github.com/kubernetes/autoscaler/tags
 And aplly configuration
 
     kubectl apply -f cluster-autoscaler-autodiscaver.yaml 
+
+### Notice
+
+## Fargate
+###### AWS Fargate = serverless compute for containers
+### Create IAM Role for Fargate
+
+EC2 Role for Node Group (Worker Node)
+
+1. Pods/kebectl on server provisioned by Fargate need permissions
+2. Create Fargate Role 
+
+	IAM -> Role -> AWS Service -> EKS Fargate Pod
+
+Role Name :
+
+    eks-fargate-role
+
+### Create Fargate Profile 
+
+1. Pod Selection Rule
+2. Specifies which Pods Should use Fargarte when they are lounched 
+
+eks-cluster-test -> Computer -> Add fargate profile
+
+    kubectl get pod 
+    kubectl get node -n kube-system
+    kubectl get ns
+    kubectl create ns dev
+    kubectl apply -f fargate-profile/nginx-config.yaml 
+    kubectl get pods -n dev
+
+To install eksctl
+
+    brew tap weaveworks/tap
+    brew install weaveworks/tap/eksct
+
+EKS create cluster:
+
+    eksctl create cluster \
+    --name demo-cluster \
+    --version 1.35 \
+    --region eu-north-1 \
+    --nodegroup-name demo-nodes \
+    --node-type t3.micro \
+    --nodes 2 \
+    --nodes-min 1 \
+    --nodes-max 3
+
+
 
 
