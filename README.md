@@ -480,7 +480,8 @@ You can retrieve it via CLI:
 	**Provider URL**: (your EKS OIDC URL)
 	**Audience**: sts.amazonaws.com
 5. Save
-6. Create IAM Policy for Cluster Autoscaler
+
+### Create IAM Policy for Cluster Autoscaler
 
 Create a policy with the following JSON:
 
@@ -509,7 +510,36 @@ Create a policy with the following JSON:
 	ClusterAutoscalerPolicy
 
 
+## 👤 6. Create IAM Role for Autoscaler
 
+1. Go to **IAM → Roles → Create role**
+2. Select:
+   - **Web identity**
+3. Choose:
+   - Your OIDC provider
+4. Set:
+   - Audience → `sts.amazonaws.com`
+	STS - AWS Se
+5. Attach:
+   - `ClusterAutoscalerPolicy`
+
+---
+
+## ☸️ 7. Create Kubernetes ServiceAccount
+
+Bind the IAM role to Kubernetes using annotations:
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cluster-autoscaler
+  namespace: kube-system
+  annotations:
+    eks.amazonaws.com/role-arn: <IAM-role-arn>
+```
+
+---
 
 
 	aws configure list 
@@ -521,7 +551,7 @@ To find latest version for autoscaler
 
 https://github.com/kubernetes/autoscaler/tags
 
-Added to  eks-cluster-with-autoscaling/cluster-autoscaler-autodiscaver.yaml:
+### Update  to  eks-cluster-with-autoscaling/cluster-autoscaler-autodiscaver.yaml:
 
 	
 	name: cluster-autoscaler
