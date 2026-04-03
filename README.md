@@ -504,24 +504,32 @@ https://github.com/kubernetes/autoscaler/tags
 
 ### Update  to  eks-cluster-with-autoscaling/cluster-autoscaler-autodiscaver.yaml:
 
-	
-	name: cluster-autoscaler
-	namespace: kube-system
-	annotations
-	eks.amazonaws.com/role-arn: arn:aws:iam::788577008603:role/EKSServiceAccountRole
+Deploy autoscaling component
+The YAML file template used in the lecture can be found here - https://raw.githubusercontent.com/kubernetes/autoscaler/master/cluster-autoscaler/cloudprovider/aws/examples/cluster-autoscaler-autodiscover.yaml
 
+Updated autoscaling configuration
+Addition to ServiceAccount
+
+	annotations:
+	    eks.amazonaws.com/role-arn: arn:aws:iam:ACCOUNTID:role/EKSServiceAccountRole
+
+Additions to Deployment
+
+Add :
+
+	cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
 	
-	containers:
-	- image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.35.0
-	  name: cluster-autoscaler
-	  env:
+	env:
 	    - name: AWS_REGION
-	      value: "eu-north-1"
+	      value: "YOUR_AWS_REGION"
+	- —node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/NAME-OF-CLUSTER
+	- —balance-similar-node-groups
+	- —skip-nodes-with-system-pods=false
+	image: registry.k8s.io/autoscaling/cluster-autoscaler:v1.XX.X
 
-	
-	--node-group-auto-discovery=asg:tag=k8s.io/cluster-autoscaler/enabled,k8s.io/cluster-autoscaler/<EKS_CLUSTRER_NAME>
-	- --balance-similar-node-groups
-	- --skip-nodes-with-system-pods=false
+Deploy nginx pods with service
+
+	kubectl apply -f nginx.yaml
 	
 And aplly configuration
 
@@ -575,6 +583,86 @@ EKS create cluster:
     --nodes-min 1 \
     --nodes-max 3
 
+
+### 🔒 What does this annotation mean?
+
+	cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+
+This is a pod annotation used by the Cluster Autoscaler.
+
+🧠 What “evict” means
+  When Cluster Autoscaler scales down, it:
+    Picks a node to remove
+    Evicts (terminates) pods running on that node
+    Moves them elsewhere (if possible)
+🚫 What happens when safe-to-evict: "false"
+
+If a pod has this annotation:
+
+👉 The autoscaler will NOT evict that pod
+
+Which means:
+
+  The node running this pod cannot be removed
+  That node becomes protected from scale-down
+
+⚠️ Why this is important for Cluster Autoscaler itself
+
+The Cluster Autoscaler runs as a pod inside the cluster.
+
+Without this annotation:
+
+Autoscaler could:
+Select a node for scale-down
+That node contains the autoscaler pod
+It kills (evicts) itself
+
+👉 Result:
+
+Autoscaler stops running
+No more scaling decisions
+Cluster scaling breaks ❌
+✅ What the annotation prevents
+
+By setting:
+
+cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+
+You ensure:
+
+Autoscaler pod cannot be evicted
+Its node will not be scaled down
+Autoscaler remains always running
+📌 Simple analogy
+
+Think of it like:
+
+“Do not remove the server that is controlling scaling.”
+
+⚖️ Important trade-off
+
+This also means:
+
+The node hosting this pod:
+Might stay even if underutilized
+Slightly reduces cost efficiency
+
+👉 But this is necessary to keep autoscaling functional.
+
+✅ Where to add it
+
+Usually added in the Cluster Autoscaler Deployment:
+
+spec:
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+🔑 Summary
+safe-to-evict: "false" = protect this pod from eviction
+Prevents autoscaler from killing itself
+Ensures continuous cluster scaling
+Trades a bit of cost for reliability
 
 
 
