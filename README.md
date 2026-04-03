@@ -460,13 +460,57 @@ To allow Kubernetes to interact securely with AWS, configure **OIDC (OpenID Conn
 
 ### 4.1 Get OIDC Provider URL
 
-Run the following command:
+Each EKS cluster has a unique OIDC URL.
 
-```bash
-aws eks describe-cluster \
-  --name <cluster-name> \
-  --query "cluster.identity.oidc.issuer" \
-  --output text
+You can retrieve it via CLI:
+
+	```bash
+	aws eks describe-cluster \
+	  --name <cluster-name> \
+	  --query "cluster.identity.oidc.issuer" \
+	  --output text
+
+###  Step 4.2: Create IAM OIDC Identity Provider
+
+1. Go to **AWS Console → IAM → Identity Providers**
+2. Click **Add provider**
+3. Select:
+	Provider type: **OpenID Connect**
+4. Enter:
+	**Provider URL**: (your EKS OIDC URL)
+	**Audience**: sts.amazonaws.com
+5. Save
+6. Create IAM Policy for Cluster Autoscaler
+
+Create a policy with the following JSON:
+
+	{
+	  "Version": "2012-10-17",
+	  "Statement": [
+	    {
+	      "Action": [
+	        "autoscaling:DescribeAutoScalingGroups",
+	        "autoscaling:DescribeAutoScalingInstances",
+	        "autoscaling:DescribeLaunchConfigurations",
+	        "autoscaling:DescribeScalingActivities",
+	        "autoscaling:SetDesiredCapacity",
+	        "autoscaling:TerminateInstanceInAutoScalingGroup",
+	        "ec2:DescribeInstanceTypes",
+	        "ec2:DescribeLaunchTemplateVersions"
+	      ],
+	      "Resource": "*",
+	      "Effect": "Allow"
+	    }
+	  ]
+	}
+
+**Policy Name**:
+
+	ClusterAutoscalerPolicy
+
+
+
+
 
 	aws configure list 
  	aws eks update-kubeconfig --name eks-cluster-test 
